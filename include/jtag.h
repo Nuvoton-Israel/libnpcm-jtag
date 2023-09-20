@@ -2,6 +2,7 @@
 #define __JTAG_H__
 #include <stdint.h>
 
+#include "config.h"
 #include "jtag_api.h"
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof(*(x)))
 
@@ -135,7 +136,11 @@ struct scan_field {
 #define JTAG_GIOCSTATUS _IOWR(__JTAG_IOCTL_MAGIC, 4, enum JtagStates)
 #define JTAG_SIOCMODE	_IOW(__JTAG_IOCTL_MAGIC, 5, unsigned int)
 #define JTAG_IOCBITBANG	_IOW(__JTAG_IOCTL_MAGIC, 6, unsigned int)
+#ifdef USE_LEGACY_IOCTL
+#define JTAG_RUNTEST    _IOW(__JTAG_IOCTL_MAGIC, 7, unsigned int)
+#else
 #define JTAG_SIOCTRST   _IOW(__JTAG_IOCTL_MAGIC, 7, unsigned int)
+#endif
 
 const char *tap_state_name(tap_state_t state);
 tap_state_t tap_state_by_name(const char *name);

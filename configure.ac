@@ -19,4 +19,12 @@ AC_CONFIG_FILES([
   src/Makefile
   lib/Makefile
 ])
+
+AC_ARG_ENABLE([legacy-ioctl],
+              [AC_HELP_STRING([--enable-legacy-ioctl],
+                              [Use legacy ioctl])])
+AS_IF([test "x$enable_legacy_ioctl" = "xyes"],
+      [AC_DEFINE([USE_LEGACY_IOCTL], [1], [Define to 1 if you use legacy ioctl])],
+      [])
+
 AC_OUTPUT

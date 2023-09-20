@@ -112,11 +112,18 @@ STATUS JTAG_set_mode(JTAG_Handler *jtag, unsigned int Mode)
 
 STATUS JTAG_run_test(JTAG_Handler *jtag, JtagStates tap_state, unsigned int tcks)
 {
+#ifdef USE_LEGACY_IOCTL
+	if (jtag == NULL)
+		return ST_ERR;
+	if (ioctl(jtag->handle, JTAG_RUNTEST, tcks) < 0) {
+		perror("runtest ioctl");
+		return ST_ERR;
+	}
+#else
 	struct jtag_tap_state tapstate;
 
 	if (jtag == NULL)
 		return ST_ERR;
-
 	tapstate.reset = 0;
 	tapstate.tck = tcks;
 	tapstate.from = JTAG_STATE_CURRENT;
@@ -125,7 +132,7 @@ STATUS JTAG_run_test(JTAG_Handler *jtag, JtagStates tap_state, unsigned int tcks
 		perror("run test");
 		return ST_ERR;
 	}
-
+#endif
 	return ST_OK;
 }
 
@@ -188,6 +195,7 @@ STATUS JTAG_shift(JTAG_Handler *jtag, struct scan_xfer *scan_xfer, unsigned int 
 	return ST_OK;
 }
 
+#ifndef USE_LEGACY_IOCTL
 int JTAG_set_jtag_trst(JTAG_Handler* handler, unsigned int active)
 {
         unsigned int trst_active = active;
@@ -198,6 +206,7 @@ int JTAG_set_jtag_trst(JTAG_Handler* handler, unsigned int active)
         }
         return 0;
 }
+#endif
 
 int JTAG_dr_scan(JTAG_Handler *jtag, int num_bits, const uint8_t *out_bits, uint8_t *in_bits,
 	tap_state_t state)
