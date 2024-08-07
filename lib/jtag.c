@@ -291,8 +291,8 @@ int JTAG_open(char *jtag_dev, int frequency, int mode)
 		fprintf(stderr, "Failed to set JTAG mode: %d\n", mode);
 	}
 
-	jtag_handler.tap_state = JtagTLR;
 	jtag_handler.loglevel = LOG_LEVEL_INFO;
+	JTAG_reset_state(jtag_handler.handle);
 
 	return jtag_handler.handle;
 err:
