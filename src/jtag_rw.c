@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <getopt.h>
 #include <stdint.h>
+#include <stdbool.h>
 #include "../include/jtag_api.h"
 
 #define XFER_CMD	(1 << 0)
@@ -59,6 +60,7 @@ void showUsage(char **argv)
 	fprintf(stderr, "  -l <data bit length>  data bit length\n");
 	fprintf(stderr, "  -t <tcks>             runtest idle\n");
 	fprintf(stderr, "  -r                    print received data\n");
+	fprintf(stderr, "  -i                    reset tap (TLR->RTI)\n");
 }
 
 int main(int argc, char **argv)
@@ -70,11 +72,12 @@ int main(int argc, char **argv)
 	int handle = -1;
 	struct jtag_xfer xfer;
 	int tcks = 0;
+	bool reset = false;
 	int ret;
 
 	memset(&xfer, 0, sizeof(xfer));
 	xfer.cmd_bitlen = 8;
-	while ((c = getopt(argc, argv, "d:c:w:l:t:r")) != -1) {
+	while ((c = getopt(argc, argv, "d:c:w:l:t:ri")) != -1) {
 		switch (c) {
 		case 'd': {
 			jtag_dev = malloc(strlen(optarg) + 1);
@@ -110,6 +113,10 @@ int main(int argc, char **argv)
 			xfer.type |= XFER_DATA;
 			break;
 		}
+		case 'i': {
+			reset = true;
+			break;
+		}
 		default:  // h, ?, and other
 			showUsage(argv);
 			exit(EXIT_SUCCESS);
@@ -136,6 +143,10 @@ int main(int argc, char **argv)
 		fprintf(stderr, "Failed to open JTAG\n");
 		goto exit;
 	}
+
+	if (reset)
+		JTAG_reset_state(handle);
+
 	//printf("xfer type = 0x%x\n", xfer.type);
 	if (xfer.cmd && (xfer.type & XFER_CMD)) {
 		ret = JTAG_send_command(handle, xfer.cmd, xfer.cmd_bitlen);

@@ -52,6 +52,7 @@ Usage: jtag_rw [option(s)]
   -l <data bit length>  data bit length
   -t <tcks>             runtest idle
   -r                    print received data
+  -i                    reset tap (TLR->RTI)
 ```
 
 ## Example

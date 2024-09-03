@@ -92,6 +92,7 @@ int main(int argc, char **argv)
 		goto exit;
 	}
 	JTAG_set_loglevel(handle, loglevel);
+	JTAG_reset_state(handle);
 	JTAG_load_svf(handle, svf_path, single_step);
 	JTAG_close(handle);
 exit:

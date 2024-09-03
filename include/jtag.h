@@ -133,7 +133,7 @@ struct scan_field {
 #define JTAG_SIOCFREQ	_IOW(__JTAG_IOCTL_MAGIC, 1, unsigned int)
 #define JTAG_GIOCFREQ	_IOR(__JTAG_IOCTL_MAGIC, 2, unsigned int)
 #define JTAG_IOCXFER	_IOWR(__JTAG_IOCTL_MAGIC, 3, struct jtag_xfer)
-#define JTAG_GIOCSTATUS _IOWR(__JTAG_IOCTL_MAGIC, 4, enum JtagStates)
+#define JTAG_GIOCSTATUS _IOWR(__JTAG_IOCTL_MAGIC, 4, JtagStates)
 #define JTAG_SIOCMODE	_IOW(__JTAG_IOCTL_MAGIC, 5, unsigned int)
 #define JTAG_IOCBITBANG	_IOW(__JTAG_IOCTL_MAGIC, 6, unsigned int)
 #ifdef USE_LEGACY_IOCTL
@@ -145,6 +145,7 @@ struct scan_field {
 const char *tap_state_name(tap_state_t state);
 tap_state_t tap_state_by_name(const char *name);
 STATUS JTAG_set_tap_state(JTAG_Handler *jtag, JtagStates tap_state);
+STATUS JTAG_get_tap_state(JTAG_Handler *jtag);
 STATUS JTAG_run_test(JTAG_Handler *jtag, JtagStates tap_state, unsigned int tcks);
 STATUS JTAG_set_clock_frequency(JTAG_Handler *jtag, unsigned int frequency);
 STATUS JTAG_set_mode(JTAG_Handler *jtag, unsigned int Mode);

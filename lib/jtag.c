@@ -169,6 +169,25 @@ STATUS JTAG_set_tap_state(JTAG_Handler *jtag, JtagStates tap_state)
 	return ST_OK;
 }
 
+STATUS JTAG_get_tap_state(JTAG_Handler *jtag)
+{
+	unsigned long req = JTAG_GIOCSTATUS;
+	JtagStates state;
+
+	if (jtag == NULL)
+		return ST_ERR;
+
+	if (ioctl(jtag->handle, req, &state) < 0) {
+		DBG_log(LEV_ERROR, "ioctl JTAG_GIOCSTATUS failed");
+		perror("get tap state");
+		return ST_ERR;
+	}
+	jtag->tap_state = state;
+
+	DBG_log(LEV_DEBUG, "TapState: %d", jtag->tap_state);
+	return ST_OK;
+}
+
 STATUS JTAG_shift(JTAG_Handler *jtag, struct scan_xfer *scan_xfer, unsigned int type)
 {
 	struct jtag_xfer xfer;
@@ -292,7 +311,7 @@ int JTAG_open(char *jtag_dev, int frequency, int mode)
 	}
 
 	jtag_handler.loglevel = LOG_LEVEL_INFO;
-	JTAG_reset_state(jtag_handler.handle);
+	JTAG_get_tap_state(&jtag_handler);
 
 	return jtag_handler.handle;
 err:
