@@ -5,13 +5,13 @@
 #include <getopt.h>
 #include <stdint.h>
 #include <stdbool.h>
-#include "../include/jtag_api.h"
+#include "../include/jtag.h"
 
 #define XFER_CMD	(1 << 0)
 #define XFER_DATA	(1 << 1)
 #define DIR_R		(1 << 0)
 #define DIR_W		(1 << 1)
-struct jtag_xfer {
+struct jtagrw_xfer {
 	char *cmd;
 	char *data;
 	int cmd_len;
@@ -22,7 +22,7 @@ struct jtag_xfer {
 	int type;
 };
 
-static int args_to_xfer(struct jtag_xfer *xfer, char *arg, int type)
+static int args_to_xfer(struct jtagrw_xfer *xfer, char *arg, int type)
 {
 	char *data_ptrs[256];
 	int len, i = 0;
@@ -54,7 +54,11 @@ static int args_to_xfer(struct jtag_xfer *xfer, char *arg, int type)
 void showUsage(char **argv)
 {
 	fprintf(stderr, "Usage: %s [option(s)]\n", argv[0]);
-	fprintf(stderr, "  -d <device>           jtag device\n");
+	fprintf(stderr, "  -d <intf>             jtag interface\n");
+	fprintf(stderr, "                        (/dev/jtagX: jtag device)\n");
+	fprintf(stderr, "                        (mctp: af_mctp socket)\n");
+	fprintf(stderr, "  -e <eid>              target mctp eid if using mctp\n");
+	fprintf(stderr, "  -n <net>              mctp net id if using mctp\n");
 	fprintf(stderr, "  -c <command>          send 8-bit command\n");
 	fprintf(stderr, "  -w <data>             write data\n");
 	fprintf(stderr, "  -l <data bit length>  data bit length\n");
@@ -68,20 +72,31 @@ int main(int argc, char **argv)
 	char *jtag_dev = NULL;
 	uint32_t instruction;
 	uint32_t bit_len = 0;
-	int c = 0;
-	int handle = -1;
-	struct jtag_xfer xfer;
+	int c = 0, v, i;
+	struct jtagrw_xfer xfer;
 	int tcks = 0;
 	bool reset = false;
 	int ret;
+	JTAG_Handler *handler;
+	struct jtag_args args = {};
 
 	memset(&xfer, 0, sizeof(xfer));
 	xfer.cmd_bitlen = 8;
-	while ((c = getopt(argc, argv, "d:c:w:l:t:ri")) != -1) {
+	while ((c = getopt(argc, argv, "d:e:n:c:w:l:t:ri")) != -1) {
 		switch (c) {
 		case 'd': {
 			jtag_dev = malloc(strlen(optarg) + 1);
 			strcpy(jtag_dev, optarg);
+			break;
+		}
+		case 'e': {
+			v = atoi(optarg);
+			jtag_args_add(&args, ARG_EID, v & 0xff);
+			break;
+		}
+		case 'n': {
+			v = atoi(optarg);
+			jtag_args_add(&args, ARG_NET, v & 0xff);
 			break;
 		}
 		case 'c': {
@@ -138,18 +153,18 @@ int main(int argc, char **argv)
 		goto exit;
 	}
 
-	handle = JTAG_open(jtag_dev, 0, JTAG_MODE_HW);
-	if (handle == -1) {
+	handler = JTAG_open(jtag_dev, &args);
+	if (!handler) {
 		fprintf(stderr, "Failed to open JTAG\n");
 		goto exit;
 	}
 
 	if (reset)
-		JTAG_reset_state(handle);
+		JTAG_reset_state(handler);
 
 	//printf("xfer type = 0x%x\n", xfer.type);
 	if (xfer.cmd && (xfer.type & XFER_CMD)) {
-		ret = JTAG_send_command(handle, xfer.cmd, xfer.cmd_bitlen);
+		ret = JTAG_send_command(handler, xfer.cmd, xfer.cmd_bitlen);
 		if (ret) {
 			printf("send command error\n");
 			goto exit;
@@ -164,7 +179,7 @@ int main(int argc, char **argv)
 				goto exit;
 			memset(xfer.data, 0, len);
 		}
-		ret = JTAG_transfer_data(handle, xfer.data, xfer.data, xfer.data_bitlen);
+		ret = JTAG_transfer_data(handler, xfer.data, xfer.data, xfer.data_bitlen);
 		if (ret)
 			goto exit;
 		if (xfer.dir & DIR_R) {
@@ -175,10 +190,10 @@ int main(int argc, char **argv)
 		}
 	}
 	if (tcks)
-		JTAG_runtest_idle(handle, tcks);
+		JTAG_runtest_idle(handler, tcks);
 exit:
-	if (handle > 0)
-		JTAG_close(handle);
+	if (handler)
+		JTAG_close(handler);
 	if (jtag_dev)
 		free(jtag_dev);
 	if (xfer.data)

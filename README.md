@@ -6,15 +6,22 @@ Provide APIs to access CPLD via JTAG interface.
 
 Download CPLD firmware(in SVF format) to device through JTAG interface on NPCM7xx/NPCM8xx BMC.
 
+## Build
+
+```bash
+autoreconf --install
+./configure CFLAGS=-static --host=aarch64-linux-gnu --target=aarch64-linux-gnu --enable-build-loadsvf
+make
+```
 ## Usage
 
 ```bash
-loadsvf -d <jtag_device> -s <svf_file>
-        [-l <log_level> -m <transfer_mode> -f <frequency> -g]
+loadsvf -d <jtag_intf> -s <svf_file>
+        [-l <log_level> -m <transfer_mode> -e <mctp_eid> -n <mctp_net> -f <frequency> -g]
 ```
 
-**-d jtag_device:**  
-specify the jtag device node <ex: /dev/jtag_drv>
+**-d jtag_interface:**  
+specify the jtag interface </dev/jtagX or mctp>
 
 **-s svf_file:**  
 specify the svf file path  
@@ -26,9 +33,15 @@ LOG LEVEL:
 2: Info  
 3: Error  
 
+**-e target_mctp_eid:(for mctp only)**  
+specify the target mctp eid
+
+**-e mctp_net:(for mctp only)**  
+specify the mctp network id
+
 **-m transfer mode:(for Poleg only)**  
-1: PSPI mode (default if not specified)  
-0: GPIO mode  
+0: HW mode (PSPI) (default if not specified)  
+1: SW mode (GPIO)  
 
 **-f frequency:**  
 force running at specific frequency in Mhz for PSPI mode.  
@@ -46,7 +59,11 @@ Send instruction, read/write data to CPLD target via JTAG.
 
 ```bash
 Usage: jtag_rw [option(s)]
-  -d <device>           jtag device
+  -d <intf>             jtag interface
+                        (/dev/jtagX: jtag device)
+                        (mctp: af_mctp socket)
+  -e <eid>              target mctp eid if using mctp
+  -n <net>              mctp net id if using mctp
   -c <command>          send 8-bit cmd byte
   -w <data>             write data
   -l <data bit length>  data bit length

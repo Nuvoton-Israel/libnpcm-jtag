@@ -5,19 +5,24 @@
 #include <getopt.h>
 #include <stdint.h>
 #include <stdbool.h>
-#include "../include/jtag_api.h"
+#include <sys/time.h>
+#include "../include/jtag.h"
 
 void showUsage(char **argv)
 {
 	fprintf(stderr, "Usage: %s [option(s)]\n", argv[0]);
-	fprintf(stderr, "  -d <device>   jtag device\n");
+	fprintf(stderr, "  -d <intf>     jtag interface\n");
+	fprintf(stderr, "                (/dev/jtagX: jtag device)\n");
+	fprintf(stderr, "                (mctp: af_mctp socket)\n");
+	fprintf(stderr, "  -m <mode>     jtag mode if using jtag device\n");
+	fprintf(stderr, "                (0: HW mode)\n");
+	fprintf(stderr, "                (1: SW mode)\n");
+	fprintf(stderr, "  -e <eid>      target mctp eid if using mctp\n");
+	fprintf(stderr, "  -n <net>      mctp net id if using mctp\n");
 	fprintf(stderr, "  -l <level>    log level\n");
-	fprintf(stderr, "  -m <mode>     transfer mode\n");
-	fprintf(stderr, "                (1: PSPI mode)\n");
-	fprintf(stderr, "                (0: GPIO mode)\n");
 	fprintf(stderr, "  -f <freq>     force running at frequency (Mhz)\n");
-	fprintf(stderr, "                for PSPI mode\n");
-	fprintf(stderr, "  -s <filepath> load svf file\n");
+	fprintf(stderr, "                for jtag device(HW mode)\n");
+	fprintf(stderr, "  -s <filepath> svf file path\n");
 	fprintf(stderr, "  -g            run svf command line by line\n\n");
 }
 
@@ -26,27 +31,37 @@ int main(int argc, char **argv)
 	char *svf_path = NULL;
 	char *jtag_dev = NULL;
 	int c = 0;
-	int v;
+	int v, i;
 	bool single_step = false;
 	int frequency = 0;
-	int mode = JTAG_MODE_HW;
-	int loglevel = LOG_LEVEL_INFO;
-	int handle = -1;
+	int priv = JTAG_MODE_HW;
+	struct timeval start, end;
+	unsigned long diff;
+	JTAG_Handler *handler;
+	struct jtag_args args = {};
 
-	while ((c = getopt(argc, argv, "m:f:l:s:d:i:r:g")) != -1) {
+	while ((c = getopt(argc, argv, "d:m:e:n:l:f:s:g")) != -1) {
 		switch (c) {
 		case 'l': {
-			loglevel = atoi(optarg);
+			v = atoi(optarg);
+			if (v >= 0 && v < 3)
+				jtag_args_add(&args, ARG_LOG_LEVEL, v);
 			break;
 		}
 		case 'm': {
 			v = atoi(optarg);
-			if (v >= 0 && v <= 1) {
-				if (v == 1)
-					mode = JTAG_MODE_HW;
-				else if (v == 0)
-					mode = JTAG_MODE_SW;
-			}
+			if (v == 0 || v == 1)
+				jtag_args_add(&args, ARG_MODE, v);
+			break;
+		}
+		case 'e': {
+			v = atoi(optarg);
+			jtag_args_add(&args, ARG_EID, v & 0xff);
+			break;
+		}
+		case 'n': {
+			v = atoi(optarg);
+			jtag_args_add(&args, ARG_NET, v & 0xff);
 			break;
 		}
 		case 'f': {
@@ -54,6 +69,7 @@ int main(int argc, char **argv)
 			if (v > 0 && v <= MAX_FREQ) {
 				frequency = v * 1000000;
 			}
+			jtag_args_add(&args, ARG_FREQ, frequency);
 			break;
 		}
 		case 'g': {
@@ -86,15 +102,22 @@ int main(int argc, char **argv)
 		goto exit;
 	}
 
-	handle = JTAG_open(jtag_dev, frequency, mode);
-	if (handle == -1) {
+	handler = JTAG_open(jtag_dev, &args);
+	if (!handler) {
 		fprintf(stderr, "Failed to open JTAG\n");
 		goto exit;
 	}
-	JTAG_set_loglevel(handle, loglevel);
-	JTAG_reset_state(handle);
-	JTAG_load_svf(handle, svf_path, single_step);
-	JTAG_close(handle);
+	JTAG_reset_state(handler);
+
+	gettimeofday(&start,NULL);
+	JTAG_load_svf(handler, svf_path, single_step);
+	gettimeofday(&end,NULL);
+	diff = 1000 * (end.tv_sec-start.tv_sec)+ (end.tv_usec-start.tv_usec) / 1000;
+	printf("Programming time is %ld ms\n",diff);
+	//printf("JTAG TCK freq=%d\n", JTAG_get_clock_frequency(handler));
+	//printf("total runtest time is %ld ms\n", total_runtest_time / 1000);
+
+	JTAG_close(handler);
 exit:
 	if (svf_path)
 		free(svf_path);

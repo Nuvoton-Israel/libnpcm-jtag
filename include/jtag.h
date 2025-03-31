@@ -1,18 +1,69 @@
 #ifndef __JTAG_H__
 #define __JTAG_H__
 #include <stdint.h>
+#include <stdbool.h>
 
 #include "config.h"
-#include "jtag_api.h"
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof(*(x)))
 
 #define LEV_DEBUG	1
 #define LEV_INFO	2
 #define LEV_ERROR	3
 
-typedef uint8_t __u8;
-typedef uint32_t __u32;
-typedef uint64_t __u64;
+#define JTAG_INTF_DEV	0
+#define JTAG_INTF_MCTP	1
+
+#define LOG_ERROR(x...) DBG_log(LEV_ERROR, x)
+#define LOG_INFO(x...) DBG_log(LEV_INFO, x)
+#define LOG_DEBUG(x...) DBG_log(LEV_DEBUG, x)
+
+#define MAX_FREQ	50
+
+#define JTAG_MODE_HW	0
+#define JTAG_MODE_SW	1
+
+struct jtag_ops;
+
+typedef enum {
+	ARG_MODE,
+	ARG_FREQ,
+	ARG_LOG_LEVEL,
+	ARG_EID,
+	ARG_NET,
+} JTAG_ARG_ID;
+#define JTAG_MAX_ARGS	8
+struct jtag_arg {
+	int id;
+	int val;
+};
+struct jtag_args {
+	struct jtag_arg arg[JTAG_MAX_ARGS];
+	int num_args;
+};
+
+typedef struct JTAG_Handler {
+	const char *name;
+	const struct jtag_ops *ops;
+	void *priv;
+	int tap_state;
+	int handle;
+	int frequency;
+	int loglevel;
+	bool single_step;
+	int type;
+} JTAG_Handler;
+
+struct jtag_ops {
+	int (*open)(JTAG_Handler *handler, char *intf, struct jtag_args *args);
+	void (*close)(JTAG_Handler *handler);
+	int (*set_state)(JTAG_Handler *handler, int state);
+	int (*set_freq)(JTAG_Handler *handler, int freq);
+	int (*get_freq)(JTAG_Handler *handler);
+	int (*run_tck)(JTAG_Handler *handler, int state, int tcks);
+	int (*load_svf)(JTAG_Handler *handler, char *svf_path, bool step);
+	int (*shift_ir)(JTAG_Handler *handler, int bits, const uint8_t *out, uint8_t *in, int state);
+	int (*shift_dr)(JTAG_Handler *handler, int bits, const uint8_t *out, uint8_t *in, int state);
+};
 
 typedef enum {
 	JtagTLR,
@@ -57,23 +108,9 @@ typedef enum tap_state {
 
 
 typedef enum {
-	ST_OK,
-	ST_ERR
+	ST_OK = 0,
+	ST_ERR = -1,
 } STATUS;
-
-typedef enum {
-    JTAGDriverState_Master = 0,
-    JTAGDriverState_Slave
-} JTAGDriverState;
-
-typedef struct JTAG_Handler {
-    int handle;
-    JtagStates tap_state;
-    int mode;
-    unsigned int frequency;
-    unsigned int loglevel;
-    int single_step;
-} JTAG_Handler;
 
 #define TDI_DATA_SIZE	    256
 #define TDO_DATA_SIZE	    256
@@ -88,20 +125,20 @@ struct scan_xfer {
 	unsigned int     end_tap_state;
 };
 struct jtag_xfer {
-	__u8	type;
-	__u8	direction;
-	__u8	from;
-	__u8	endstate;
-	__u32	padding;
-	__u32	length;
-	__u64	tdio;
+	uint8_t type;
+	uint8_t direction;
+	uint8_t from;
+	uint8_t endstate;
+	uint32_t padding;
+	uint32_t length;
+	uint64_t tdio;
 };
 
 struct jtag_tap_state {
-	__u8	reset;
-	__u8	from;
-	__u8	endstate;
-	__u8	tck;
+	uint8_t	reset;
+	uint8_t	from;
+	uint8_t	endstate;
+	uint8_t	tck;
 };
 
 enum jtag_xfer_type {
@@ -144,11 +181,12 @@ struct scan_field {
 
 const char *tap_state_name(tap_state_t state);
 tap_state_t tap_state_by_name(const char *name);
-STATUS JTAG_set_tap_state(JTAG_Handler *jtag, JtagStates tap_state);
-STATUS JTAG_get_tap_state(JTAG_Handler *jtag);
-STATUS JTAG_run_test(JTAG_Handler *jtag, JtagStates tap_state, unsigned int tcks);
-STATUS JTAG_set_clock_frequency(JTAG_Handler *jtag, unsigned int frequency);
-STATUS JTAG_set_mode(JTAG_Handler *jtag, unsigned int Mode);
+int JTAG_set_tap_state(JTAG_Handler *jtag, int tap_state);
+int JTAG_get_tap_state(JTAG_Handler *jtag);
+int JTAG_run_test(JTAG_Handler *jtag, int tap_state, int tcks);
+int JTAG_set_clock_frequency(JTAG_Handler *jtag, int frequency);
+int JTAG_get_clock_frequency(JTAG_Handler *jtag);
+int JTAG_set_mode(JTAG_Handler *jtag, unsigned int Mode);
 int JTAG_set_jtag_trst(JTAG_Handler *jtag, unsigned int active);
 int JTAG_ir_scan(JTAG_Handler *jtag, int num_bits, const uint8_t *out_bits, uint8_t *in_bits,
 	tap_state_t state);
@@ -156,5 +194,14 @@ int JTAG_dr_scan(JTAG_Handler *jtag, int num_bits, const uint8_t *out_bits, uint
 	tap_state_t state);
 int handle_svf_command(JTAG_Handler* jtag, char *filename);
 void DBG_log(unsigned int level, const char *format, ...);
+int jtag_args_add(struct jtag_args *args, JTAG_ARG_ID id, int val);
+
+JTAG_Handler *JTAG_open(char *jtag_dev, struct jtag_args *args);
+void JTAG_close(JTAG_Handler *handler);
+void JTAG_reset_state(JTAG_Handler *handler);
+int JTAG_load_svf(JTAG_Handler *handler, char *svf_path, bool single_step);
+int JTAG_send_command(JTAG_Handler *handler, uint8_t *command, uint32_t bit_len);
+int JTAG_transfer_data(JTAG_Handler *handler, uint8_t *out, uint8_t *in, uint32_t bit_len);
+void JTAG_runtest_idle(JTAG_Handler *handler, uint32_t tcks);
 
 #endif

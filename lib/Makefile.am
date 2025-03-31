@@ -6,6 +6,6 @@ AM_CFLAGS = -I../include
 
 # share lib
 lib_LTLIBRARIES = libnpcm-jtag.la
-libnpcm_jtag_la_SOURCES = jtag.c svf.c
+libnpcm_jtag_la_SOURCES = hal_jtag.c jtag_dev.c jtag_mctp.c svf.c
 
-include_HEADERS = ../include/jtag.h ../include/jtag_api.h
+include_HEADERS = ../include/jtag.h

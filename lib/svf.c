@@ -43,9 +43,6 @@
 #define ERROR_WAIT                      (-5)
 #define ERROR_TIMEOUT_REACHED           (-6)
 
-#define LOG_ERROR(x...) DBG_log(LEV_ERROR, x)
-#define LOG_INFO(x...) DBG_log(LEV_INFO, x)
-#define LOG_DEBUG(x...) DBG_log(LEV_DEBUG, x)
 static JTAG_Handler* jtag_handler = NULL;
 unsigned long total_runtest_time;
 
@@ -569,7 +566,7 @@ int handle_svf_command(JTAG_Handler* state, char *filename)
 			tmp = 100 * svf_cur_pos / svf_file_size;
 			if (tmp > progress) {
 				progress = tmp;
-				if (jtag_handler->loglevel > LOG_LEVEL_DEBUG) {
+				if (jtag_handler->loglevel > LEV_DEBUG) {
 					printf("Progress: %d%%\r", progress);
 					fflush(stdout);
 				}
