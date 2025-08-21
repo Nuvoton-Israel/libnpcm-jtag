@@ -57,6 +57,7 @@ void showUsage(char **argv)
 	fprintf(stderr, "  -d <intf>             jtag interface\n");
 	fprintf(stderr, "                        (/dev/jtagX: jtag device)\n");
 	fprintf(stderr, "                        (mctp: af_mctp socket)\n");
+	fprintf(stderr, "  -f <freq>             specify the frequency (MHz)\n");
 	fprintf(stderr, "  -e <eid>              target mctp eid if using mctp\n");
 	fprintf(stderr, "  -n <net>              mctp net id if using mctp\n");
 	fprintf(stderr, "  -c <command>          send 8-bit command\n");
@@ -77,16 +78,25 @@ int main(int argc, char **argv)
 	int tcks = 0;
 	bool reset = false;
 	int ret;
-	JTAG_Handler *handler;
+	JTAG_Handler *handler = NULL;
 	struct jtag_args args = {};
+	int frequency = 0;
 
 	memset(&xfer, 0, sizeof(xfer));
 	xfer.cmd_bitlen = 8;
-	while ((c = getopt(argc, argv, "d:e:n:c:w:l:t:ri")) != -1) {
+	while ((c = getopt(argc, argv, "d:f:e:n:c:w:l:t:ri")) != -1) {
 		switch (c) {
 		case 'd': {
 			jtag_dev = malloc(strlen(optarg) + 1);
 			strcpy(jtag_dev, optarg);
+			break;
+		}
+		case 'f': {
+			v = atoi(optarg);
+			if (v > 0 && v <= MAX_FREQ) {
+				frequency = v * 1000000;
+			}
+			jtag_args_add(&args, ARG_FREQ, frequency);
 			break;
 		}
 		case 'e': {

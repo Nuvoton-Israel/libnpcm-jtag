@@ -62,6 +62,7 @@ Usage: jtag_rw [option(s)]
   -d <intf>             jtag interface
                         (/dev/jtagX: jtag device)
                         (mctp: af_mctp socket)
+  -f <freq>             specify the frequency (MHz)
   -e <eid>              target mctp eid if using mctp
   -n <net>              mctp net id if using mctp
   -c <command>          send 8-bit cmd byte
