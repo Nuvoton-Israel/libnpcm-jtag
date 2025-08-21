@@ -10,7 +10,7 @@ Download CPLD firmware(in SVF format) to device through JTAG interface on NPCM7x
 
 ```bash
 autoreconf --install
-./configure CFLAGS=-static --host=aarch64-linux-gnu --target=aarch64-linux-gnu --enable-build-loadsvf
+./configure --host=aarch64-linux-gnu --target=aarch64-linux-gnu --enable-static-build --enable-build-loadsvf
 make
 ```
 ## Usage

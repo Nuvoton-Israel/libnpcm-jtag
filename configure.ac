@@ -27,4 +27,8 @@ AC_ARG_ENABLE([build-loadsvf],
               [AS_HELP_STRING([--enable-build-loadsvf],[build loadsvf])])
 AM_CONDITIONAL([BUILD_LOADSVF],  [test "x$enable_build_loadsvf" = "xyes"])
 
+AC_ARG_ENABLE([static-build],
+              [AS_HELP_STRING([--enable-static-build],[static build])])
+AM_CONDITIONAL([STATIC_BUILD],  [test "x$enable_static_build" = "xyes"])
+
 AC_OUTPUT
